@@ -1,0 +1,36 @@
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  height: 100svh;
+}
+
+main {
+  display: grid;
+  place-items: center;
+  gap: 2rem;
+}
+
+h1 {
+  font-size: 7rem;
+}
+
+img {
+  width: 200px;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
