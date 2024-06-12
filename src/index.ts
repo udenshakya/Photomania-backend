@@ -2,10 +2,12 @@ import dotenv from "dotenv";
 import express from "express";
 import path from "path";
 import { routers } from "./routers";
+import cors from "cors";
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 8000;
+app.use(cors());
 
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
