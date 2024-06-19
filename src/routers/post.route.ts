@@ -20,8 +20,6 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
-// route
-postRouter.get("/my", authenticateToken, postController.myProfile);
 
 // postRouter.get("/", authenticateToken, postController.list);
 postRouter.get("/all", postController.getAllPosts);

@@ -5,7 +5,7 @@ const userRepository = db.getRepository(Users);
 
 type User = {
   username: string;
-  email: string;
+  email?: string;
   password: string;
 };
 
@@ -25,7 +25,7 @@ async function list() {
   }
 }
 
-async function create({ username, email, password }: User) {
+async function create({ username, email, password }: any) {
   try {
     const user = userRepository.create({ username, email, password });
     await userRepository.save(user);
@@ -46,19 +46,48 @@ async function getUserByID(userID: number) {
   }
 }
 
-async function update(userID: number, { username, email, password }: User) {
-  try {
-    const user = await userRepository.findOneBy({ id: userID });
-    if (!user) {
-      throw new Error("User not found");
-    }
-    userRepository.merge(user, { username, email, password });
-    return await userRepository.save(user);
-  } catch (error) {
-    console.error("Error updating user:", error);
-    throw new Error("Internal server error");
-  }
-}
+// async function update(userID: number, { username, password }: User) {
+//   try {
+//     const user = await userRepository.findOneBy({ id: userID });
+//     if (!user) {
+//       throw new Error("User not found");
+//     }
+//     // userRepository.merge(user, { username, email, password });
+//     if (username) user.username = username;
+//     if (password) user.password = await bcrypt.hash(password, 10);
+//     return await userRepository.save(user);
+//   } catch (error) {
+//     console.error("Error updating user:", error);
+//     throw new Error("Internal server error");
+//   }
+// }
+
+// async function update(
+//   userID: number,
+//   { username, oldPassword, newPassword }: any
+// ) {
+//   try {
+//     const user = await userRepository.findOneBy({ id: userID });
+//     if (!user) {
+//       throw new Error("User not found");
+//     }
+
+//     if (username) user.username = username;
+
+//     if (oldPassword && newPassword) {
+//       const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+//       if (!isPasswordValid) {
+//         res.status(400).json({ error: "Old password is incorrect" });
+//       }
+//       user.password = await bcrypt.hash(newPassword, 10);
+//     }
+
+//     return await userRepository.save(user);
+//   } catch (error) {
+//     console.error("Error updating user:", error);
+//     throw new Error("Internal server error");
+//   }
+// }
 
 async function remove(userID: number) {
   try {
@@ -73,7 +102,7 @@ async function remove(userID: number) {
   }
 }
 
-async function register(res: any, { username, email, password }: User) {
+async function register(res: any, { username, email, password }: any) {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = userRepository.create({
@@ -112,7 +141,6 @@ export const usersService = {
   list,
   create,
   getUserByID,
-  update,
   remove,
   register,
   login,

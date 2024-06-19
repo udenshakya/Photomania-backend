@@ -23,8 +23,23 @@ async function list(req: Request, res: Response) {
 
 async function getAllPosts(req: Request, res: Response) {
   try {
-    const data = await postRepository.find({ relations: ["user"] });
-    return res.status(200).json({ data });
+    const page = parseInt(req.query.page as string) || 1; // Default to page 1 if not provided
+    const pageSize = parseInt(req.query.pageSize as string) || 10; // Default to 10 items per page if not provided
+
+    const [data, total] = await postRepository.findAndCount({
+      relations: ["user"],
+      take: pageSize,
+      skip: (page - 1) * pageSize,
+      order: { createdAt: "DESC" },
+    });
+
+    return res.status(200).json({
+      data,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    });
   } catch (error) {
     return res.status(500).json({ error: "Internal server error" });
   }
@@ -144,7 +159,7 @@ async function updatePost(req: Request, res: Response) {
   try {
     const postID = parseInt(req.params.id);
     const { caption, description } = req.body;
-    const image = req.file;
+    const image = req.file; // Assuming Multer is used for file uploads
 
     if (isNaN(postID)) {
       return res.status(400).json({ error: "Invalid post ID" });
@@ -189,6 +204,12 @@ async function updatePost(req: Request, res: Response) {
         caption,
         description,
       });
+    } else {
+      // If no new image is uploaded, update only caption and description
+      postRepository.merge(post, {
+        caption,
+        description,
+      });
     }
 
     await postRepository.save(post);
@@ -198,21 +219,6 @@ async function updatePost(req: Request, res: Response) {
       .json({ success: true, message: "Post updated", post });
   } catch (error) {
     console.error("Error updating post:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-}
-
-async function myProfile(req: Request, res: Response) {
-  try {
-    const user = (req as any).user;
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    return res.status(200).json({ user });
-  } catch (error) {
-    console.error("Error retrieving user profile:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -259,7 +265,6 @@ export const postController = {
   getPostByID,
   updatePost,
   deletePost,
-  myProfile,
   getAllPosts,
   search,
 };
