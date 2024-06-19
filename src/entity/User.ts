@@ -22,9 +22,8 @@ export class Users {
   @Column()
   password!: string;
 
-  // @OneToOne(() => Profile)
-  // @JoinColumn()
-  // profile!: Profile;
+  @Column({ nullable: true })
+  imageUrl?: string;
 
   @OneToMany(() => Post, (post) => post.user)
   posts!: Post[];

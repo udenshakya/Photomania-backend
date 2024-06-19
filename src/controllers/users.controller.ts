@@ -8,6 +8,7 @@ import { JwtPayload } from "jsonwebtoken";
 import * as yup from "yup";
 import bcrypt from "bcrypt";
 import { Post } from "../entity/Post";
+import path from "path";
 const postRepository = db.getRepository(Post);
 
 async function list(req: Request, res: Response) {
@@ -18,17 +19,6 @@ async function list(req: Request, res: Response) {
     return res.status(500).json({ error: "Internal server error" });
   }
 }
-
-// async function create(req: Request, res: Response) {
-//   try {
-//     const { username, email, password } = req.body;
-
-//     const data = await usersService.create({ username, email, password });
-//     return res.status(201).json({ data });
-//   } catch (error) {
-//     return res.status(500).json({ error: "Internal server error" });
-//   }
-// }
 
 async function getUserByID(req: Request, res: Response) {
   try {
@@ -55,6 +45,7 @@ async function getUserPosts(req: Request, res: Response) {
     // Retrieve posts associated with the specified user ID
     const posts = await postRepository.find({
       where: { user: { id: userId } },
+      relations: ["user"],
     });
 
     return res.status(200).json({ posts });
@@ -85,6 +76,40 @@ async function deleteUser(req: Request, res: Response) {
   }
 }
 
+// async function updateUser(req: Request, res: Response) {
+//   try {
+//     console.log(req.body);
+//     console.log(req.params.id);
+//     const userID = parseInt(req.params.id);
+//     if (isNaN(userID)) {
+//       return res.status(400).json({ error: "Invalid user ID" });
+//     }
+
+//     const { username, password } = req.body;
+//     if (!username && !password) {
+//       return res.status(400).json({
+//         error:
+//           "At least one field (username, password) must be provided for update",
+//       });
+//     }
+
+//     const updatedUser = await usersService.update(userID, {
+//       username,
+//       password,
+//     });
+//     if (!updatedUser) {
+//       return res.status(404).json({ error: "User not found" });
+//     }
+
+//     return res
+//       .status(200)
+//       .json({ message: "User updated successfully", updatedUser });
+//   } catch (error) {
+//     console.error("Error updating user:", error);
+//     return res.status(500).json({ error: "Internal server error" });
+//   }
+// }
+
 async function updateUser(req: Request, res: Response) {
   try {
     const userID = parseInt(req.params.id);
@@ -92,28 +117,103 @@ async function updateUser(req: Request, res: Response) {
       return res.status(400).json({ error: "Invalid user ID" });
     }
 
-    const { username, email, password } = req.body;
-    if (!username && !email && !password) {
+    const { username, oldPassword, newPassword } = req.body;
+
+    if (!username && !oldPassword && !newPassword) {
       return res.status(400).json({
         error:
-          "At least one field (username, email, password) must be provided for update",
+          "At least one field (username, oldPassword, newPassword) must be provided for update",
       });
     }
 
-    const updatedUser = await usersService.update(userID, {
-      username,
-      email,
-      password,
-    });
-    if (!updatedUser) {
+    const user = await userRepository.findOneBy({ id: userID });
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (username) user.username = username;
+
+    if (oldPassword && newPassword) {
+      const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+      if (!isPasswordValid) {
+        return res.status(400).json({ error: "Old password is incorrect" });
+      }
+      user.password = await bcrypt.hash(newPassword, 10);
+    }
+
+    await userRepository.save(user);
+
+    return res.status(200).json({ message: "User updated successfully", user });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+// async function updateUser(req: Request, res: Response) {
+//   try {
+//     const userID = parseInt(req.params.id);
+//     if (isNaN(userID)) {
+//       return res.status(400).json({ error: "Invalid user ID" });
+//     }
+
+//     const { username, email, password } = req.body;
+//     let imageUrl;
+
+//     if (req.file) {
+//       imageUrl = path.join("uploads", req.file.filename);
+//     }
+
+//     const user = await userRepository.findOneBy({ id: userID });
+//     if (!user) {
+//       return res.status(404).json({ error: "User not found" });
+//     }
+
+//     if (username) user.username = username;
+//     if (email) user.email = email;
+//     if (password) user.password = await bcrypt.hash(password, 10);
+//     if (imageUrl) user.imageUrl = imageUrl;
+
+//     await userRepository.save(user);
+//     console.log(user);
+
+//     return res
+//       .status(200)
+//       .json({ message: "User updated successfully", updatedUser: user });
+//   } catch (error) {
+//     console.error("Error updating user:", error);
+//     return res.status(500).json({ error: "Internal server error" });
+//   }
+// }
+
+async function uploadImage(req: Request, res: Response) {
+  try {
+    const userID = parseInt(req.params.id);
+    if (isNaN(userID)) {
+      return res.status(400).json({ error: "Invalid user ID" });
+    }
+
+    const image = req.file;
+    if (!image) {
+      return res.status(400).json({ error: "Image file is required" });
+    }
+
+    const imageUrl = path.join("uploads", image.filename);
+
+    const user = await userRepository.findOneBy({ id: userID });
+    if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
+    user.imageUrl = imageUrl;
+
+    await userRepository.save(user);
+
     return res
       .status(200)
-      .json({ message: "User updated successfully", updatedUser });
+      .json({ message: "Image uploaded successfully", user });
   } catch (error) {
-    console.error("Error updating user:", error);
+    console.error("Error uploading image:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -200,7 +300,9 @@ async function myProfile(req: Request, res: Response) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    return res.status(200).json({ user });
+    const { id, username, email, imageUrl } = user;
+
+    return res.status(200).json({ user: { id, username, email, imageUrl } });
   } catch (error) {
     console.error("Error retrieving user profile:", error);
     return res.status(500).json({ error: "Internal server error" });
@@ -209,7 +311,7 @@ async function myProfile(req: Request, res: Response) {
 
 async function logout(req: Request, res: Response) {
   try {
-    res.setHeader("Authorization", ""); // Clear the token in the response header
+    // res.setHeader("Authorization", "");
     return res.status(200).json({ message: "Logout successful" });
   } catch (error) {
     console.error("Error during logout:", error);
@@ -228,4 +330,5 @@ export const usersController = {
   myProfile,
   getUserPosts,
   logout,
+  uploadImage,
 };
