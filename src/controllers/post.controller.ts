@@ -159,7 +159,7 @@ async function updatePost(req: Request, res: Response) {
   try {
     const postID = parseInt(req.params.id);
     const { caption, description } = req.body;
-    const image = req.file; // Assuming Multer is used for file uploads
+    const image = req.file;
 
     if (isNaN(postID)) {
       return res.status(400).json({ error: "Invalid post ID" });
@@ -172,7 +172,7 @@ async function updatePost(req: Request, res: Response) {
           id: (req as any).user.id,
         },
       },
-      relations: ["user"], // Ensure we also load the user relation
+      relations: ["user"],
     });
 
     if (!post) {
@@ -182,22 +182,18 @@ async function updatePost(req: Request, res: Response) {
     }
 
     if (image) {
-      // Delete the old image from Cloudinary if it exists
       if (post.publicId) {
         await cloudinary.uploader.destroy(post.publicId);
       }
 
-      // Upload the new file to Cloudinary
       const uploadRes = await cloudinary.uploader.upload(image.path, {
         upload_preset: "MERNEcommerce",
       });
 
-      // Delete the local file
       fs.unlink(image.path, (err) => {
         if (err) console.error("Failed to delete local image file:", err);
       });
 
-      // Merge new image details with existing post entity
       postRepository.merge(post, {
         imageUrl: uploadRes.secure_url,
         publicId: uploadRes.public_id,
@@ -205,7 +201,6 @@ async function updatePost(req: Request, res: Response) {
         description,
       });
     } else {
-      // If no new image is uploaded, update only caption and description
       postRepository.merge(post, {
         caption,
         description,
